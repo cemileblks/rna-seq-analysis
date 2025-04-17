@@ -1,0 +1,7 @@
+*.fastq
+*.bam
+*.RData
+*.html
+*.rds
+.Rhistory
+.Rproj.user/
