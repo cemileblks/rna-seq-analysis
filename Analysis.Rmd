@@ -1,0 +1,102 @@
+---
+title: "ICA RNA-seq Analysis - GSE288148"
+author: "B272229"
+date: "2025-04-17"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Analysis of RNA-Seq data for GSE288148
+
+
+```{r init, echo=FALSE}
+# Load the required libraries & load files, adapted from class code
+library(Rsubread)
+library(edgeR)
+library(limma)
+library(gplots)
+library(DESeq2)
+library(affy)
+library(QuasR)
+library(pheatmap)
+library(EnhancedVolcano)
+
+# Load count data
+load("mytable_feaures")
+
+
+# View environment
+ls()
+dir()
+
+
+```
+
+## Build Annotation Data
+
+```{r input_processing, echo=FALSE}
+# Adapted from class code
+
+# Extract the gene count matrix and sample names from the mytable_feaures object
+table_rnaseq <- (mytable_feaures)$counts
+colnames_rnaseq <- colnames(table_rnaseq)
+
+# Create an annotation data frame (adf) to hold sample metadata
+adf <- data.frame(Colnames = colnames_rnaseq)
+library(stringr)
+# colnames(table_rnaseq) TESTING
+locc <- str_locate_all(pattern = "Aligned.sortedByCoord.out.bam", adf$Colnames)
+adf$ShortGEOName <- substr(adf$Colnames, 1, locc[[1]][, "start"] - 1)
+
+# GEO page: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE288148
+# Sample short names (e.g. Tumor_1) were created, since they were't provided in GEO
+# GSM8759896	CD8 T, Biotin+, rep1  BiotinPos_1
+# GSM8759897	CD8 T, Biotin+, rep2  BiotinPos_2
+# GSM8759898	CD8 T, Biotin+, rep3  BiotinPos_3
+# GSM8759899	CD8 T, Biotin-, rep1  BiotinNeg_1
+# GSM8759900	CD8 T, Biotin-, rep2  BiotinNeg_2
+# GSM8759901	CD8 T, Biotin-, rep3  BiotinNeg_3
+
+# Sample order in the data matches the GEO list, so can safely assign custom short names
+
+adf$ShortNames <- c("BiotinPos_1", "BiotinPos_2", "BiotinPos_3", "BiotinNeg_1", "BiotinNeg_2", "BiotinNeg_3")
+
+# Extract treatment group (e.g., BiotinPos or BiotinNeg) from short names for use in differential analysis
+library(stringr)
+split_names <- str_split(adf$ShortNames, pattern = "_")
+treatment <- c()
+for (i in 1:length(split_names)) {
+  treatment <- c(treatment, split_names[[i]][1])
+}
+adf$Treatment <- treatment
+# Relabel treatment factor levels with descriptive names
+# code adapted from https://stackoverflow.com/questions/5869539/confusion-between-factor-levels-and-factor-labels
+adf$Treatment <- factor(adf$Treatment, levels = c("BiotinNeg", "BiotinPos"),
+                        labels = c("Biotin− (Distal)", "Biotin+ (Tumor-Proximal)"))
+
+# Assign a color to each treatment group for easier visualization
+z <- factor(adf$Treatment)
+adf$Colours <- rainbow(length(levels(z)))[z]
+
+# Make sure the colnames of the study match the rownames of the annotation
+rownames(adf) <- adf$Colnames
+if (identical(colnames_rnaseq, rownames(adf)) == FALSE) {
+  print("Names do not match")
+} else {
+  print("Names match.. OK to proceed")
+}
+
+# Rename columns of the count matrix using short sample names (BiotinPos_1, etc.)
+# This works because the sample order matches between count data and metadata
+rownames(adf) <- adf$ShortNames
+colnames(table_rnaseq) <- adf$ShortNames
+
+colnames_rnaseq <- colnames(table_rnaseq)
+```
+
+
+
+
