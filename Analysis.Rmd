@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 # Analysis of RNA-Seq data for GSE288148
+This pipeline was adapted from RNA-seq example analysis class code. Where the code is derived from an external resource or adapted from class code inline comments are provided.
 
 ```{r init, echo=FALSE}
 # Load the required libraries & load files, adapted from class code
@@ -33,9 +34,9 @@ dir()
 ```
 
 ## Build Annotation Data
+The count matrix and sample metadata are extracted from the mytable_feaures object. Sample names are shortened and treatment groups assigned based on GEO descriptions. Each sample is then labeled as either Biotin+ or Biotin−, corresponding to tumor-neighboring and tumor-distal CD8+ T cells.
 
 ```{r input_processing, echo=FALSE}
-# Adapted from class code
 # Extract the gene count matrix and sample names from the mytable_feaures object
 table_rnaseq <- (mytable_feaures)$counts
 colnames_rnaseq <- colnames(table_rnaseq)
@@ -57,7 +58,6 @@ adf$ShortGEOName <- substr(adf$Colnames, 1, locc[[1]][, "start"] - 1)
 # GSM8759901	CD8 T, Biotin-, rep3  BiotinNeg_3
 
 # Sample order in the data matches the GEO list, so can safely assign custom short names
-
 adf$ShortNames <- c("BiotinPos_1", "BiotinPos_2", "BiotinPos_3", "BiotinNeg_1", "BiotinNeg_2", "BiotinNeg_3")
 
 # Extract treatment group (e.g., BiotinPos or BiotinNeg) from short names for use in differential analysis
@@ -91,6 +91,7 @@ colnames(table_rnaseq) <- adf$ShortNames
 colnames_rnaseq <- colnames(table_rnaseq)
 ```
 ## Loading data into DESeq
+A DESeqDataSet object is created using DESeq2. The design formula specifies the treatment condition (Biotin+ vs Biotin−) as the variable of interest for differential analysis.
 
 ```{r loading_deseq, echo=FALSE}
 # Create DESeq2 object using the adf(metadata) and table_rnaseq(count matrix)
@@ -118,8 +119,9 @@ colnames(colData(dds_rnaseq))   # metadata columns (e.g. Treatment)
 colnames(assay(dds_rnaseq))     # count data
 
 ```
-Quality Filtering Genes
-Apply filters to remove genes that do not pass quality filters that are either unexpressed or uninformative
+### Quality Filtering Genes
+Genes with low counts across all samples were filtered out using a simple row sum threshold (>1). This removes uninformative genes that are not likely to yield significant results.
+
 ```{r apply_filters, echo=FALSE}
 # Filter out genes with very low overall counts (row sum <= 1)
 keep <- rowSums(counts(dds_rnaseq)) > 1
@@ -127,6 +129,7 @@ dds_rnaseq <- dds_rnaseq[keep,]
 nrow(dds_rnaseq)  # Show number of genes retained
 ```
 ## Normalisation of Data
+To account for differences in sequencing depth for each of the samples, size factors were estimated and used to normalise the raw count data.
 
 ```{r normalisation, echo=TRUE}
 # Adapted from ICA example code and class code
@@ -135,21 +138,14 @@ dds_rnaseq <- estimateSizeFactors(dds_rnaseq)
 
 # View the size factors for each sample
 sizeFactors(dds_rnaseq)
-
 ```
-
 ## Data Normalisation for Plotting
-
-To prepare the RNA-seq count data for visualisation different normalisation methods were explored: fragments per million (FPM), variance stabilising transformation (VST), and regularised log transformation (rlog). They were adapted from class code used in RNA-Seq Advanced Analysis. 
-log2(FPM) is a quick and simple normalisation however it does not stabilise variance in low-expressed genes very well. VST and rlog are both used in DESeq2 address this by compressing large differences and expanding small ones. Since this study involves only six samples, rlog was chosen for downstream analysis as it performs better with smaller sample sizes (Chipster DESeq2 docs).
-
-For exploratory visualisation, all methods were compared to test their consistency and variation across samples.
-
-from this link: https://chipster.csc.fi/manual/deseq2-transform.html
+Multiple normalisation methods were applied for visualisation purposes in the next step: log2-transformed counts, FPM, VST, and rlog. These were compared to check the consistency for each of the samples. Due to the small sample size, rlog-transformed method was used for most downstream visualisations.
 
 ```{r plot_normalised, echo=FALSE}
 # Adapted from ICA example code and class code
 # Generate various normalised versions of the count data for visualisation only (not used for DE analysis)
+# The reasoning to use rlog was further confirmed by this resource: from this link: https://chipster.csc.fi/manual/deseq2-transform.html 
 # Extraction of normalised counts
 normalised_rnaseq <- counts(dds_rnaseq, normalized=TRUE)
 
@@ -167,18 +163,16 @@ vsd_rnaseq <- vst(dds_rnaseq, blind = TRUE)
 # Regularised log transformation (rlog)
 rld_rnaseq <- rlog(dds_rnaseq, blind = TRUE)
 # head(rld_rnaseq, 3)
-
 ```
 
 ##Plots with Normalised Data.
 
 ```{r build_plots, echo=FALSE, fig.width=10, fig.height=6}
 
-# Visualise and compare the distribution of counts across samples
-# using different normalisation methods
-
-# These boxplots help identify technical variation, outliers, or poorly normalized data.
+# Visualise and compare the distribution of counts across samples using different normalisation methods
+# These boxplots help identify technical variation, outliers, or poorly normalised data.
 # log2-normalised counts, log FPM, variance-stabilised, and rlog-transformed data are compared
+# Editing and making the boxplots prettier were adapted from: https://www.datamentor.io/r-programming/box-plot 
 group_colours <- c(rep("lightblue", 3), rep("lightcoral", 3))
 
 # Log2 Normalised Counts
@@ -216,22 +210,22 @@ boxplot(assay(vsd_rnaseq),
         ylab = "VST Expression")
 
 # Rlog
+png("rlog_boxplot.png", width = 1000, height = 600)
 boxplot(assay(rld_rnaseq),
         main = "Rlog-transformed Counts",
         names = colnames(rld_rnaseq),
         col = group_colours,
         cex.axis = 0.9,
         ylab = "rlog Expression")
+dev.off()
 ```
 
-Exploratory Data Plots
-PCA plots similar to those we use for microarrays.
-
+## Exploratory Data Plots
+Principal Component Analysis (PCA) was performed to see the overall similarity between samples based on gene expression profiles. Both 2D and 3D PCA plots were generated using the rlog-transformed expression data.
 
 ```{r more_explore, echo=FALSE}
 # PCA analysis and visualisation
 # Adapted from ICA example and class code
-
 library(scatterplot3d)
 library(ggplot2)
 
@@ -258,13 +252,16 @@ qplot(pca$x[, 1],
     values = c("BiotinPos" = "#00FFFF", 
                "BiotinNeg" = "#FF0000")  
   )
-# We can also output a distance matrix…
+# Output a distance matrix
 sampleDists <- dist(t(assay(rld_rnaseq)))
 sampleDists
 
 ```
 
 ## Generate further heatmaps with the data
+Sample distance heatmap was created to further assess relationships between samples. Consistent clustering patterns with the PCA and distance matrix suggests good separation by treatment and no apparent outliers.
+
+PCA was also visualized using DESeq2's plotPCA() function. The treatment condition likely explains the variation represented by PC1 (79% of the variance). It shows that treatment condition is the main factor driving variance in expression between samples. The biotinPos and biotiNeg cluster together within their groups.
 
 ```{r more_heatma-s, echo=FALSE}
 # Heatmap and DESeq2's built-in PCA
@@ -273,30 +270,56 @@ library("RColorBrewer")
 
 # Convert distance object to a matrix
 sampleDistMatrix <- as.matrix(sampleDists)
+# build a 1-column data.frame of treatments, rownames must match the matrix cols
+annotation_col <- data.frame(
+  Treatment = adf$Treatment
+)
+# Change colors to be consistent for heatmap and PCA
+annotation_colors <- list(
+  Treatment = c(
+    "BiotinPos" = "lightblue",
+    "BiotinNeg" = "lightcoral"
+  )
+)
+rownames(annotation_col) <- adf$ShortNames
 
 # Heatmap for pairwise distances between samples
-pheatmap(sampleDistMatrix,
-         main = "Samples Distance Matrix")
+pheatmap(
+  sampleDistMatrix,
+  main           = "Sample-to-Sample Distance Heatmap",
+  annotation_col = annotation_col,
+  annotation_colors = annotation_colors,
+  fontsize       = 10,
+  border_color   = NA,
+)
 
 # easier PCA plot (from DESeq2)
-ress <- plotPCA(rld_rnaseq, intgroup = c("Treatment"))
-ress <- ress + geom_label(aes(label = name)) + ggtitle("PCA")
-plot(ress)
+# Adapted from class code and styling adapted from https://support.bioconductor.org/p/77960/
+ress <- plotPCA(rld_rnaseq, intgroup = "Treatment", returnData = TRUE)
+percentVar <- round(100 * attr(ress, "percentVar"))
+# png("PCA_rlog_counts.png", width = 760, height = 460, res = 150)
+ggplot(ress, aes(PC1, PC2, color = Treatment)) +
+  geom_point(size = 3) +             
+  labs(
+    title = "PCA of rlog-transformed Counts",
+    x     = paste0("PC1: ", percentVar[1], "% variance"),
+    y     = paste0("PC2: ", percentVar[2], "% variance"),
+    color = "Treatment"
+  )
+# dev.off()
 ```
 
-
-The treatment condition likely explains the variation represented by PC1
-
 ## Differential Gene Expression
+DESeq2 was used to test for differential gene expression between BiotinPos and BiotinNeg groups. Results were filtered using an adjusted p-value < 0.05. Genes were ranked based on absolute test statistic to identify the top candidates with consistent expression changes.
 
-Simplified stats
+Heatmaps and MA plots were used to visualise expression differences across samples. Ensembl annotations were retrieved using biomaRt to match gene names and descriptions to DESeq2 results.
 
 ```{r differential_expression, echo=FALSE}
 # Adapted from class code
 dds_rnaseq <- DESeq(dds_rnaseq)
 
 # We should apply this here https://support.bioconductor.org/p/77461/#107693
-# But there is a bug in this version of DESeq2!!
+# But there is a bug in this version of DESeq2 as noted in the class code hence it not performed.
 # dds_rnaseq <- lfcShrink(dds_rnaseq, coef=2)
 
 # Specify contrast: BiotinPos vs BiotinNeg
@@ -317,8 +340,7 @@ head(result_treatment)
 ```
 Indicates that BiotinNeg is the base level of comparison. Means that all log2 fold changes represent the Biotin+ group relative to the Biotin- group. 
  
- 
- 
+
 ## Make heatmaps from each of the output tables- selected top 50 or all using fold change and FDR.
 
 ```{r differential_expression_heatmaps, echo=FALSE}
@@ -331,11 +353,11 @@ pheatmap(assay(rld_rnaseq)[top70, ], scale = "row", show_rownames = F, main = "R
 # all
 pheatmap(assay(rld_rnaseq)[rownames(result_treatment), ], scale = "row", show_rownames = F, main = "Treatment Selected, Row Scaled")
 
-
 ```
 ## Build Gene Annotation. A serialised is generated in case Ensembl is unavailable
 
 ```{r build_gene_annotation, echo=TRUE}
+# Adapted from class code
 # Download Ensembl annotation using BiomaRt and rename the samples
 library(biomaRt)
 
@@ -400,7 +422,7 @@ plotme <- (rld_rnaseq)[rownames(result_treatment)[1:50], ]
 rownames(plotme) <- resultAnnot$nice_names[idx2]
 
 # Make heatmap with candidate genes
-png(filename = "heatmap_candidates.png", width = 800, height = 1000)
+png(filename = "heatmap_candidates.png")
 pheatmap(assay(plotme), scale = "row", fontsize_row = 10, cellheight = 12, cellwidth = 12, treeheight_row = 40, treeheight_col = 40)
 dev.off()
 
@@ -408,7 +430,7 @@ pheatmap(assay(plotme), scale = "row", fontsize_row = 10, cellheight = 12, cellw
 
 ```
 ## Final Results Table
-Since we have annotation that matches gene names to candidates we can also annotate the results table from differential expression
+Since we have annotation that matches gene names to candidates we can also annotate the results table from differential expression.
 
 ```{r merge_gene_annotation2, echo=FALSE}
 
@@ -424,21 +446,32 @@ rownames(result_treatment) <- resultAnnot$nice_names[idx2]
 print(result_treatment[1:50, ])
 
 ```
-## The source paper showed candidates in a volcano plot- this is to compare
+```{r export_top10, echo=FALSE}
+# Extract top 10 DE genes
+top10_df <- as.data.frame(result_treatment)[1:10, ]
 
-Current row names are not useful here- we need to use genes but then will discard any
-without known names. This is OK here because we are exploring the annotation -genes without
-a gene name and so are no use for annotating the data.
+# Add rownames as a "Gene" column
+top10_df$Gene <- rownames(top10_df)
 
-We can still keep unannoted genes as candidates!
+# Reorder columns to put gene name first
+top10_df <- top10_df[, c("Gene", "log2FoldChange", "pvalue", "padj")]
 
-Generate a volcano plot to visualise the differential expression results
-Adapted from the class code to check for candidate genes mentioned important  in the publication (Lou et al., 2025, GSE288148)
-The following genes were mentioned as functionally important in tumor-proximal (Biotin+) CD8+ T cells:
+# Export to CSV
+write.csv(top10_df, file = "top10_DE_genes.csv", row.names = FALSE)
+
+print(top10_df)
+
+```
+## Checking Candidate Genes from the Source Paper using Volcano Plot
+
+A volcano plot was generated to compare our differential expression results with the functionally important genes reported in the source publication (Lou et al., 2025). Genes without annotation were removed for this visualisation, since gene names are required for labelling. Unannotated genes were still retained for other analyses. 
+
+The paper highlighted the following genes as functionally important in tumor-proximal (Biotin+) CD8+ T cells:
     - Upregulated: Activation markers (Tnfrsf9, Entpd1, Lag3, Pdcd1, Il2ra)
                  Cytotoxicity genes (Gzmf, Gzmb, Gzmc, Gzmd, Gzme, Prf1)
    - Downregulated: Naive/memory markers (Tcf7, S1pr1)
 Only genes with annotations were used for labeling.
+These genes were all found in our DE analysis and labelled on the volcano plot to confirm consistency with the published findings.
 
 ```{r make_volcano, echo=FALSE}
 
@@ -461,9 +494,9 @@ paper_genes <- c("Tnfrsf9", "Entpd1", "Lag3", "Pdcd1", "Il2ra",
 # Check which of these genes are present in the data
 if (sum(paper_genes %in% rownames(result_treatment)) == length(paper_genes)) {
   print("all genes found in data")
-} # you'd just include a subset to label if some genes were missing- here they are all present
+} # would have included a subset to label if some genes were missing- here they are all present
 
-# The paper found...
+# Adapted from class doe
 # for volvano see
 # https://bioconductor.org/packages/devel/bioc/vignettes/EnhancedVolcano/inst/doc/EnhancedVolcano.html
 volcano_test <- EnhancedVolcano(result_treatment,
@@ -500,11 +533,11 @@ print(as.data.frame(result_treatment[paper_genes, ]))
 
 ```
 
-# Functional Enrichment analysis
+## Functional Enrichment Analysis
 
-The hallmark gene set represents a collection of curated gene sets withing Molecular Signature Database (MSigDB). 
+Functional enrichment was performed using the fgsea package with Hallmark gene sets from MSigDB. These gene sets represent well defined biological processes. Genes were ranked using the Wald statistic from DESeq2, which reflects both the size and reliability of the expression changes.
 
-
+This analysis aimed to identify whether particular biological pathways were significantly enriched in the tumour-neighbouring (Biotin+) or distal (Biotin−) CD8+ T cell populations.
 
 ```{r functional_enrichment echo=FALSE}
 # Code adapted from class code gsea_script for Functional Enrichment Analysis
@@ -519,8 +552,8 @@ load("mouse_H_v5p2.rdata")  # loads Mm.H
 # head(Mm.H)
 
 # Get Ensembl to Entrez ID mapping
-# mart <- useDataset("mmusculus_gene_ensembl", mart = useMart("ensembl"))
-# ens2entrez <- getBM(attributes = c("ensembl_gene_id", "entrezgene_id"), mart = mart)
+mart <- useDataset("mmusculus_gene_ensembl", mart = useMart("ensembl"))
+ens2entrez <- getBM(attributes = c("ensembl_gene_id", "entrezgene_id"), mart = mart)
 head(ens2entrez)
 
 # Prepare result_treatment for fgsea input
@@ -619,22 +652,17 @@ fgseaResTidy <- fgseaRes %>%
   mutate(pathway = gsub("HALLMARK_", "", pathway))  # clean pathway names
 
 # NES barplot with color by significance
+png("NES_barplot.png", width = 8, height = 6, units = "in", res = 300)
 ggplot(fgseaResTidy, aes(reorder(pathway, NES), NES)) +
   geom_col(aes(fill = padj < 0.05)) +
   coord_flip() +
   labs(x = "Pathway", 
        y = "Normalised Enrichment Score (NES)",
        title = "Hallmark Pathways – NES from GSEA") +
-  theme_minimal(base_size = 8)
-   
+  theme_minimal()
+
+dev.off()
+
 ```
  
-## Functional Enrichment Analysis
-
-The DESeq Wald test statistic was used to rank genes because stat column gives information both the magnitude of the change in expression but also the direction (positive up in BiotinPos and negative down) of the expression change. This ranking was input  into the fgsea algorithm which tests whether members of each Hallmark gene set that are mostly at the top (positive NES) or bottom (negative NES) of our list. This was chosen over log2FoldChange because log2FC might put a gene with a huge change but high variablility at the top while stat took that into consideration making the conclusions a bit mroe reliable. 
-
-Gene sets that were  significantly up-regulated in tumor-neighboring (Biotin+) group were Oxidative Phosphorylation MYC Targets V1, and E2F Targets. The top down regulated pathways were Epithelial–Mesenchymal Transition, Angiogenesis, and Hypoxia. These results suggest a shift toward metabolic and proliferative pathways in the tumor-neighboring group and also validate the use of GSEA on a Wald‐statistic ranking.
-
-The enrichment plots were generated using the plotEnrichment() function from the fgsea package, with additional annotations for NES, p-value, and FDR added using ggplot2 customisation, as demonstrated in the package documentation.
-
 
