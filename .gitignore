@@ -11,7 +11,7 @@
 # RStudio and session specific files
 .Rproj.user/
 .Rapp.history
-.Rplots.pdf
+Rplots.pdf
 
 # OS / Editor artifacts
 .DS_Store
