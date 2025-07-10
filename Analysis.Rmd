@@ -63,7 +63,7 @@ adf$ShortNames <- c("BiotinPos_1", "BiotinPos_2", "BiotinPos_3", "BiotinNeg_1", 
 library(stringr)
 split_names <- str_split(adf$ShortNames, pattern = "_")
 treatment <- c()
-for (i in 1:length(split_names)) {
+for (i in 1:seq_along(split_names)) {
   treatment <- c(treatment, split_names[[i]][1])
 }
 adf$Treatment <- treatment
