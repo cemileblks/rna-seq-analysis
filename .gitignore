@@ -1,7 +1,18 @@
+# Raw and intermediate data
 *.fastq
 *.bam
-*.RData
-*.html
+*.sam
 *.rds
-.Rhistory
+*.rdata
+*.RData
+!resultAnnot.RData
+*.Rhistory
+
+# RStudio and session specific files
 .Rproj.user/
+.Rapp.history
+.Rplots.pdf
+
+# OS / Editor artifacts
+.DS_Store
+*.swp
