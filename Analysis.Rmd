@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Analysis of RNA-Seq data for GSE288148
 This pipeline was adapted from RNA-seq example analysis class code. Where the code is derived from an external resource or adapted from class code inline comments are provided.
-
+ 
 ```{r init, echo=FALSE}
 # Load the required libraries & load files, adapted from class code
 library(Rsubread)
@@ -30,7 +30,6 @@ load("mytable_feaures")
 # View environment
 ls()
 dir()
-
 ```
 
 ## Build Annotation Data
@@ -96,9 +95,11 @@ A DESeqDataSet object is created using DESeq2. The design formula specifies the 
 ```{r loading_deseq, echo=FALSE}
 # Create DESeq2 object using the adf(metadata) and table_rnaseq(count matrix)
 # The design formula specifies that differential expression should be tested based on the Treatment group
-dds_rnaseq <- DESeqDataSetFromMatrix(countData = table_rnaseq,
-                                     colData = adf,
-                                     design = ~ Treatment)
+dds_rnaseq <- DESeqDataSetFromMatrix(
+  countData = table_rnaseq,
+  colData = adf,
+  design = ~Treatment
+)
 
 # Check object dimensions (genes x samples)
 dim(dds_rnaseq)
@@ -110,14 +111,13 @@ head(rownames(dds_rnaseq))
 colnames(dds_rnaseq)
 
 # Check object class and structure
-class(dds_rnaseq)        # Returns "DESeqDataSet"
-typeof(dds_rnaseq)       # Returns "S4" because it's a complex object
+class(dds_rnaseq) # Returns "DESeqDataSet"
+typeof(dds_rnaseq) # Returns "S4" because it's a complex object
 
 # Explore what's inside the DESeq2 object
 slotNames(dds_rnaseq)
-colnames(colData(dds_rnaseq))   # metadata columns (e.g. Treatment)
-colnames(assay(dds_rnaseq))     # count data
-
+colnames(colData(dds_rnaseq)) # metadata columns (e.g. Treatment)
+colnames(assay(dds_rnaseq)) # count data
 ```
 ### Quality Filtering Genes
 Genes with low counts across all samples were filtered out using a simple row sum threshold (>1). This removes uninformative genes that are not likely to yield significant results.
@@ -125,8 +125,8 @@ Genes with low counts across all samples were filtered out using a simple row su
 ```{r apply_filters, echo=FALSE}
 # Filter out genes with very low overall counts (row sum <= 1)
 keep <- rowSums(counts(dds_rnaseq)) > 1
-dds_rnaseq <- dds_rnaseq[keep,]
-nrow(dds_rnaseq)  # Show number of genes retained
+dds_rnaseq <- dds_rnaseq[keep, ]
+nrow(dds_rnaseq) # Show number of genes retained
 ```
 ## Normalisation of Data
 To account for differences in sequencing depth for each of the samples, size factors were estimated and used to normalise the raw count data.
@@ -145,21 +145,21 @@ Multiple normalisation methods were applied for visualisation purposes in the ne
 ```{r plot_normalised, echo=FALSE}
 # Adapted from ICA example code and class code
 # Generate various normalised versions of the count data for visualisation only (not used for DE analysis)
-# The reasoning to use rlog was further confirmed by this resource: from this link: https://chipster.csc.fi/manual/deseq2-transform.html 
+# The reasoning to use rlog was further confirmed by this resource: from this link: https://chipster.csc.fi/manual/deseq2-transform.html
 # Extraction of normalised counts
-normalised_rnaseq <- counts(dds_rnaseq, normalized=TRUE)
+normalised_rnaseq <- counts(dds_rnaseq, normalized = TRUE)
 
 # Log2 of normalised counts (quick, but not variance-stabilised) +1 to prevent -Inf values
-counts_rnaseq <- log2(counts(dds_rnaseq, normalized=TRUE) +1)
+counts_rnaseq <- log2(counts(dds_rnaseq, normalized = TRUE) + 1)
 
 # Fragments per million (similar to counts-per-million), then log-transformed, +1 to prevent -Inf values
-fpm_rnaseq <- log(fpm(dds_rnaseq) +1)
+fpm_rnaseq <- log(fpm(dds_rnaseq) + 1)
 head(fpm_rnaseq, 3)
 
 # Variance-stabilising transformation (vst)
 vsd_rnaseq <- vst(dds_rnaseq, blind = TRUE)
 # head(vsd_rnaseq, 3)
- 
+
 # Regularised log transformation (rlog)
 rld_rnaseq <- rlog(dds_rnaseq, blind = TRUE)
 # head(rld_rnaseq, 3)
@@ -168,55 +168,59 @@ rld_rnaseq <- rlog(dds_rnaseq, blind = TRUE)
 ##Plots with Normalised Data.
 
 ```{r build_plots, echo=FALSE, fig.width=10, fig.height=6}
-
 # Visualise and compare the distribution of counts across samples using different normalisation methods
 # These boxplots help identify technical variation, outliers, or poorly normalised data.
 # log2-normalised counts, log FPM, variance-stabilised, and rlog-transformed data are compared
-# Editing and making the boxplots prettier were adapted from: https://www.datamentor.io/r-programming/box-plot 
+# Editing and making the boxplots prettier were adapted from: https://www.datamentor.io/r-programming/box-plot
 group_colours <- c(rep("lightblue", 3), rep("lightcoral", 3))
 
 # Log2 Normalised Counts
-boxplot(counts_rnaseq, 
-        main = "Log2 Normalised Counts",
-        names = colnames(counts_rnaseq),
-        col = group_colours,
-        cex.axis = 0.9,
-        ylab = "log2 (normalised counts + 1)")
+boxplot(counts_rnaseq,
+  main = "Log2 Normalised Counts",
+  names = colnames(counts_rnaseq),
+  col = group_colours,
+  cex.axis = 0.9,
+  ylab = "log2 (normalised counts + 1)"
+)
 
-par(xpd=TRUE)
+par(xpd = TRUE)
 legend("topright",
-       legend = c("Biotin+ (Tumor-Proximal)", "Biotin− (Distal)"),
-       fill = c("lightblue", "lightcoral"),
-       border = "black",
-       bty = "n",
-       cex = 0.8,
-       inset = c(0,-0.19),
-       title = "Treatment")
+  legend = c("Biotin+ (Tumor-Proximal)", "Biotin− (Distal)"),
+  fill = c("lightblue", "lightcoral"),
+  border = "black",
+  bty = "n",
+  cex = 0.8,
+  inset = c(0, -0.19),
+  title = "Treatment"
+)
 
 # Log FPM
 boxplot(fpm_rnaseq,
-        main = "Log FPM",
-        names = colnames(counts_rnaseq),
-        col = group_colours,
-        cex.axis = 0.9,
-        ylab = "log(FPM + 1)")
+  main = "Log FPM",
+  names = colnames(counts_rnaseq),
+  col = group_colours,
+  cex.axis = 0.9,
+  ylab = "log(FPM + 1)"
+)
 
 # VST
-boxplot(assay(vsd_rnaseq), 
-        main = "Variance-stabilising transformation (VST)",
-        names = colnames(vsd_rnaseq),
-        col = group_colours,
-        cex.axis = 0.9,
-        ylab = "VST Expression")
+boxplot(assay(vsd_rnaseq),
+  main = "Variance-stabilising transformation (VST)",
+  names = colnames(vsd_rnaseq),
+  col = group_colours,
+  cex.axis = 0.9,
+  ylab = "VST Expression"
+)
 
 # Rlog
-png("rlog_boxplot.png", width = 1000, height = 600)
+png("results/rlog_boxplot.png", width = 1000, height = 600)
 boxplot(assay(rld_rnaseq),
-        main = "Rlog-transformed Counts",
-        names = colnames(rld_rnaseq),
-        col = group_colours,
-        cex.axis = 0.9,
-        ylab = "rlog Expression")
+  main = "Rlog-transformed Counts",
+  names = colnames(rld_rnaseq),
+  col = group_colours,
+  cex.axis = 0.9,
+  ylab = "rlog Expression"
+)
 dev.off()
 ```
 
@@ -243,19 +247,21 @@ text(s3d.coords$x, s3d.coords$y, labels = colnames(rld_rnaseq), pos = 3, offset 
 # https://www.geeksforgeeks.org/qplot-in-r/
 # https://www.theanalysisfactor.com/r-programming-plotting-color-part-2-qplot/
 custom_colors <- setNames(unique(adf$Colours), unique(adf$Treatment))
-qplot(pca$x[, 1], 
-      pca$x[, 2], 
-      xlab = "PCA1", 
-      ylab = "PCA2", 
-      colour = adf$Treatment,
-      main = "2D PCA of rlog-normalised Counts") + scale_colour_manual(
-    values = c("BiotinPos" = "#00FFFF", 
-               "BiotinNeg" = "#FF0000")  
+qplot(pca$x[, 1],
+  pca$x[, 2],
+  xlab = "PCA1",
+  ylab = "PCA2",
+  colour = adf$Treatment,
+  main = "2D PCA of rlog-normalised Counts"
+) + scale_colour_manual(
+  values = c(
+    "BiotinPos" = "#00FFFF",
+    "BiotinNeg" = "#FF0000"
   )
+)
 # Output a distance matrix
 sampleDists <- dist(t(assay(rld_rnaseq)))
 sampleDists
-
 ```
 
 ## Generate further heatmaps with the data
@@ -286,27 +292,27 @@ rownames(annotation_col) <- adf$ShortNames
 # Heatmap for pairwise distances between samples
 pheatmap(
   sampleDistMatrix,
-  main           = "Sample-to-Sample Distance Heatmap",
+  main = "Sample-to-Sample Distance Heatmap",
   annotation_col = annotation_col,
   annotation_colors = annotation_colors,
-  fontsize       = 10,
-  border_color   = NA,
+  fontsize = 10,
+  border_color = NA,
 )
 
 # easier PCA plot (from DESeq2)
 # Adapted from class code and styling adapted from https://support.bioconductor.org/p/77960/
 ress <- plotPCA(rld_rnaseq, intgroup = "Treatment", returnData = TRUE)
 percentVar <- round(100 * attr(ress, "percentVar"))
-# png("PCA_rlog_counts.png", width = 760, height = 460, res = 150)
+png("results/PCA_rlog_counts.png", width = 760, height = 460, res = 150)
 ggplot(ress, aes(PC1, PC2, color = Treatment)) +
-  geom_point(size = 3) +             
+  geom_point(size = 3) +
   labs(
     title = "PCA of rlog-transformed Counts",
     x     = paste0("PC1: ", percentVar[1], "% variance"),
     y     = paste0("PC2: ", percentVar[2], "% variance"),
     color = "Treatment"
   )
-# dev.off()
+dev.off()
 ```
 
 ## Differential Gene Expression
@@ -333,7 +339,7 @@ table(result_treatment$padj < 0.01)
 table(result_treatment$padj < 0.05)
 
 result_treatment_selected <- subset(result_treatment, padj < 0.05)
- 
+
 result_treatment <- result_treatment[order(abs(result_treatment$stat), decreasing = TRUE), ]
 # View top genes that are differentially expressed
 head(result_treatment)
@@ -344,15 +350,12 @@ Indicates that BiotinNeg is the base level of comparison. Means that all log2 fo
 ## Make heatmaps from each of the output tables- selected top 50 or all using fold change and FDR.
 
 ```{r differential_expression_heatmaps, echo=FALSE}
-
 top70 <- rownames(result_treatment)[1:70]
 
 # make a heatmap for the top 70
 pheatmap(assay(rld_rnaseq)[top70, ], scale = "row", show_rownames = F, main = "RLD values, Row Scaled, Top 70")
-
 # all
 pheatmap(assay(rld_rnaseq)[rownames(result_treatment), ], scale = "row", show_rownames = F, main = "Treatment Selected, Row Scaled")
-
 ```
 ## Build Gene Annotation. A serialised is generated in case Ensembl is unavailable
 
@@ -369,16 +372,15 @@ if (file.exists("resultAnnot.RData")) {
   ensembl_host <- "https://www.ensembl.org"
   head(biomaRt::listMarts(host = ensembl_host), 15)
   head(biomaRt::listAttributes(biomaRt::useDataset(dataset = "mmusculus_gene_ensembl", mart = useMart("ENSEMBL_MART_ENSEMBL", host = ensembl_host))), 40)
-  
+
   # Connect and use mouse dataset
   mart <- biomaRt::useDataset(dataset = "mmusculus_gene_ensembl", mart = useMart("ENSEMBL_MART_ENSEMBL", host = ensembl_host))
-  
+
   # Retrieve annotation data
   resultAnnot <- biomaRt::getBM(values = rownames(dds_rnaseq), attributes = c("ensembl_gene_id", "external_gene_name", "chromosome_name", "start_position", "end_position", "description", "strand"), filters = "ensembl_gene_id", mart = mart)
   # Save annotation to file
   save(resultAnnot, file = "resultAnnot.RData")
 }
-
 ```
 Merge Annotation with Input Data
 
@@ -422,18 +424,16 @@ plotme <- (rld_rnaseq)[rownames(result_treatment)[1:50], ]
 rownames(plotme) <- resultAnnot$nice_names[idx2]
 
 # Make heatmap with candidate genes
-png(filename = "heatmap_candidates.png")
+png(filename = "results/heatmap_candidates.png", width = 350, height = 720)
 pheatmap(assay(plotme), scale = "row", fontsize_row = 10, cellheight = 12, cellwidth = 12, treeheight_row = 40, treeheight_col = 40)
 dev.off()
 
 pheatmap(assay(plotme), scale = "row", fontsize_row = 10, cellheight = 12, cellwidth = 12, treeheight_row = 40, treeheight_col = 40)
-
 ```
 ## Final Results Table
 Since we have annotation that matches gene names to candidates we can also annotate the results table from differential expression.
 
 ```{r merge_gene_annotation2, echo=FALSE}
-
 # this has the results ordered
 
 # before
@@ -444,23 +444,26 @@ idx2 <- match(rownames(result_treatment), rownames(resultAnnot))
 rownames(result_treatment) <- resultAnnot$nice_names[idx2]
 # after
 print(result_treatment[1:50, ])
-
 ```
 ```{r export_top10, echo=FALSE}
 # Extract top 10 DE genes
 top10_df <- as.data.frame(result_treatment)[1:10, ]
 
 # Add rownames as a "Gene" column
-top10_df$Gene <- rownames(top10_df)
+top10_df$Gene_Combined <- rownames(top10_df)
+
+# Extract Ensembl ID from 'Gene_Name', which is in format "ENSMUSG..._GeneName"
+split_cols <- strsplit(top10_df$Gene_Combined, "_")
+top10_df$Ensembl_ID <- sapply(split_cols, `[`, 1)
+top10_df$Gene <- sapply(split_cols, `[`, 2)
 
 # Reorder columns to put gene name first
-top10_df <- top10_df[, c("Gene", "log2FoldChange", "pvalue", "padj")]
+top10_df <- top10_df[, c("Ensembl_ID", "Gene", "log2FoldChange", "pvalue", "padj")]
 
 # Export to CSV
-write.csv(top10_df, file = "top10_DE_genes.csv", row.names = FALSE)
+write.csv(top10_df, file = "results/top10_DE_genes.csv", row.names = FALSE)
 
 print(top10_df)
-
 ```
 ## Checking Candidate Genes from the Source Paper using Volcano Plot
 
@@ -474,7 +477,6 @@ Only genes with annotations were used for labeling.
 These genes were all found in our DE analysis and labelled on the volcano plot to confirm consistency with the published findings.
 
 ```{r make_volcano, echo=FALSE}
-
 # Assign gene names from annotation
 result_treatment$gene <- resultAnnot$external_gene_name[idx2]
 
@@ -487,9 +489,11 @@ rownames(result_treatment) <- result_treatment$gene
 # Now we have gene names so we can plot the remaining genes in a volcano plot
 
 # Genes highlighted in the source paper
-paper_genes <- c("Tnfrsf9", "Entpd1", "Lag3", "Pdcd1", "Il2ra",
-                 "Gzmf", "Gzmb", "Gzmc", "Gzmd", "Gzme", "Prf1",
-                 "Tcf7", "S1pr1")
+paper_genes <- c(
+  "Tnfrsf9", "Entpd1", "Lag3", "Pdcd1", "Il2ra",
+  "Gzmf", "Gzmb", "Gzmc", "Gzmd", "Gzme", "Prf1",
+  "Tcf7", "S1pr1"
+)
 
 # Check which of these genes are present in the data
 if (sum(paper_genes %in% rownames(result_treatment)) == length(paper_genes)) {
@@ -522,7 +526,7 @@ volcano_test <- EnhancedVolcano(result_treatment,
 )
 
 plot(volcano_test, xlim = 800, ylim = 800)
-png("volcano_test.png", width = 800, height = 800)
+png("results/volcano_test.png", width = 800, height = 800)
 plot(volcano_test)
 dev.off()
 
@@ -530,7 +534,6 @@ dev.off()
 # View(as.data.frame(result_treatment[paper_genes,]))
 
 print(as.data.frame(result_treatment[paper_genes, ]))
-
 ```
 
 ## Functional Enrichment Analysis
@@ -547,7 +550,7 @@ library(biomaRt)
 
 # Download the mouse Hallmark gene sets
 download.file("https://bioinf.wehi.edu.au/software/MSigDB/mouse_H_v5p2.rdata", destfile = "mouse_H_v5p2.rdata")
-load("mouse_H_v5p2.rdata")  # loads Mm.H
+load("mouse_H_v5p2.rdata") # loads Mm.H
 
 # head(Mm.H)
 
@@ -567,7 +570,7 @@ gene_to_ensembl <- resultAnnot[, c("external_gene_name", "ensembl_gene_id")]
 res_df <- inner_join(res_df, gene_to_ensembl, by = join_by(gene == external_gene_name))
 
 # Join with Entrez IDs
-res_merged <- inner_join(res_df, ens2entrez, by="ensembl_gene_id")
+res_merged <- inner_join(res_df, ens2entrez, by = "ensembl_gene_id")
 
 # Filter out any NA Entrez IDs
 res_merged <- res_merged[is.na(res_merged$entrezgene_id) == FALSE, ]
@@ -575,19 +578,19 @@ dim(res_merged)
 
 # Sort by the Wald test statistic (largest positive first = up in BiotinPos group)
 # Adapted from: https://stephenturner.github.io/deseq-to-fgsea/
-res_merged <- res_merged[order(res_merged$stat, decreasing=TRUE), ]
+res_merged <- res_merged[order(res_merged$stat, decreasing = TRUE), ]
 
 # Remove duplicate entrez IDs
 res_merged <- res_merged[!duplicated(res_merged$entrezgene_id), ]
 
 # Keep only cols needed for fgsea
-res_merged <- res_merged[, c("stat","entrezgene_id")]
+res_merged <- res_merged[, c("stat", "entrezgene_id")]
 
 # Set rownames as Entrez IDs
-rownames(res_merged) <- res_merged[,"entrezgene_id"]
+rownames(res_merged) <- res_merged[, "entrezgene_id"]
 
 # Drop the entrezgene_id column as it is now stored in rownames
-res_merged["entrezgene_id"] <-NULL
+res_merged["entrezgene_id"] <- NULL
 
 # Convert data frame to named vector format for fgsea names = Enrez IDs and V1 = stat
 rn <- rownames(res_merged)
@@ -596,14 +599,14 @@ res_merged <- res_merged[, 1]
 names(res_merged) <- rn
 
 # Filter na values
-res_merged  <- res_merged[!(is.na(names(res_merged)))]
-res_merged  <- res_merged[!(is.na(res_merged))]
+res_merged <- res_merged[!(is.na(names(res_merged)))]
+res_merged <- res_merged[!(is.na(res_merged))]
 
-# Enrichment analysis 
-fgseaRes <- fgsea(Mm.H, res_merged, minSize=25, maxSize = 500)
+# Enrichment analysis
+fgseaRes <- fgsea(Mm.H, res_merged, minSize = 25, maxSize = 500)
 
 # Sort results by normalised enrichment score (NES)
-fgseaRes <- fgseaRes[order(fgseaRes$NES,decreasing=TRUE),]
+fgseaRes <- fgseaRes[order(fgseaRes$NES, decreasing = TRUE), ]
 head(fgseaRes)
 
 # Plot the top up-regulated pathway
@@ -614,9 +617,11 @@ info_up <- fgseaRes[fgseaRes$pathway == bestPath_up, ]
 plotEnrichment(Mm.H[[bestPath_up]], stat_vec) +
   labs(
     title = paste0("Biotin+ vs. Biotin- treatment groups\nGene Set: ", bestPath_up),
-    subtitle = paste0("NES = ", round(info_up$NES, 2),
-                      ", p-value = ", signif(info_up$pval, 2),
-                      ", FDR = ", signif(info_up$padj, 2)),
+    subtitle = paste0(
+      "NES = ", round(info_up$NES, 2),
+      ", p-value = ", signif(info_up$pval, 2),
+      ", FDR = ", signif(info_up$padj, 2)
+    ),
     x = "Gene Rank",
     y = "Enrichment Score (ES)"
   ) +
@@ -626,16 +631,18 @@ plotEnrichment(Mm.H[[bestPath_up]], stat_vec) +
   )
 
 # Plot the most down-regulated pathway
-fgseaRes <- fgseaRes[order(fgseaRes$NES,decreasing=FALSE), ]
+fgseaRes <- fgseaRes[order(fgseaRes$NES, decreasing = FALSE), ]
 head(fgseaRes)
 bestPath_down <- fgseaRes$pathway[1]
 info_down <- fgseaRes[fgseaRes$pathway == bestPath_down, ]
 plotEnrichment(Mm.H[[bestPath_down]], stat_vec) +
   labs(
     title = paste0("Biotin+ vs. Biotin- treatment groups\nGene Set: ", bestPath_down),
-    subtitle = paste0("NES = ", round(info_down$NES, 2),
-                      ", p-value = ", signif(info_down$pval, 2),
-                      ", FDR = ", signif(info_down$padj, 2)),
+    subtitle = paste0(
+      "NES = ", round(info_down$NES, 2),
+      ", p-value = ", signif(info_down$pval, 2),
+      ", FDR = ", signif(info_down$padj, 2)
+    ),
     x = "Gene Rank",
     y = "Enrichment Score (ES)"
   ) +
@@ -649,20 +656,21 @@ library(ggplot2)
 # Tidy the results
 fgseaResTidy <- fgseaRes %>%
   arrange(desc(NES)) %>%
-  mutate(pathway = gsub("HALLMARK_", "", pathway))  # clean pathway names
+  mutate(pathway = gsub("HALLMARK_", "", pathway)) # clean pathway names
 
 # NES barplot with color by significance
-png("NES_barplot.png", width = 8, height = 6, units = "in", res = 300)
+png("results/NES_barplot.png", width = 8, height = 6, units = "in", res = 300)
 ggplot(fgseaResTidy, aes(reorder(pathway, NES), NES)) +
   geom_col(aes(fill = padj < 0.05)) +
   coord_flip() +
-  labs(x = "Pathway", 
-       y = "Normalised Enrichment Score (NES)",
-       title = "Hallmark Pathways – NES from GSEA") +
+  labs(
+    x = "Pathway",
+    y = "Normalised Enrichment Score (NES)",
+    title = "Hallmark Pathways – NES from GSEA"
+  ) +
   theme_minimal()
 
 dev.off()
-
 ```
  
 
